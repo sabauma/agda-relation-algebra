@@ -120,12 +120,6 @@ schemaToDbFormat ((name , type) ∷ xs) = Base NAT >> char '|'
                                       >> chompRest >> char '\n'
                                       >> schemaToDbFormat xs
 
--- The first row for the described database format is going to
--- include the primary key, which we care nothing about at this
--- point.
---schemaToDbFormat : Schema → Format
---schemaToDbFormat x = chompRest >> schemaToDbFormat′ x
-
 isNumber : Char → Bool
 isNumber '0' = true
 isNumber '1' = true
@@ -167,6 +161,7 @@ mutual
     ... | nothing       = just (x :: ⟨⟩ , xs)
     ... | just (y , ys) = just (x :: y  , ys)
 
+    -- Read a base type from the input stream.
     read : (u : U) → List Char → ParseResult (el u)
     read CHAR []          = nothing
     read CHAR (x ∷ xs)    = just (x , xs)
@@ -178,6 +173,10 @@ mutual
 
 mutual
 
+    -- Parse as many of a given format as possible. The ℕ parameter specifies
+    -- the maximum number of times the specified parser may be invoked, since
+    -- the sub parser may consume no input and we need to convince Agda that
+    -- this will terminate (typically this will be the length of the input stream).
     parseMany : (f : Format) → ℕ → List Char → ParseResult (List ⟦ f ⟧)
     parseMany f zero as    = nothing
     parseMany f (suc n) [] = just ([] , [])
@@ -187,7 +186,7 @@ mutual
     ... | nothing          = just (x ∷ [] , bs)
     ... | just (y , cs)    = just (x ∷ y  , cs)
 
-    parseBounded : (f : Format) → (n : ℕ) → List Char → Maybe (Σ (BoundedVec ⟦ f ⟧ n) (λ x → List Char))
+    parseBounded : (f : Format) → (n : ℕ) → List Char → ParseResult (BoundedVec ⟦ f ⟧ n)
     parseBounded f 0 xs     = just (⟨⟩ , xs)
     parseBounded f (suc n) xs with parse f xs
     ... | nothing           = just (⟨⟩ , xs)
@@ -209,30 +208,30 @@ mutual
     ... | just (ys , ds)   = just (x ∷ ys , ds)
 
     parse : (f : Format) → List Char → ParseResult ⟦ f ⟧
-    parse Bad bs          = nothing
-    parse End bs          = just (tt , bs)
-    parse (Base u) bs     = read u bs
+    parse Bad bs           = nothing
+    parse End bs           = just (tt , bs)
+    parse (Base u) bs      = read u bs
     parse (Plus f₁ f₂) bs with parse f₁ bs
-    ... | just (x , cs)   = just (inj₁ x , cs)
+    ... | just (x , cs)    = just (inj₁ x , cs)
     ... | nothing with parse f₂ bs
-    ... | just (y , ds)   = just (inj₂ y , ds)
-    ... | nothing         = nothing
+    ... | just (y , ds)    = just (inj₂ y , ds)
+    ... | nothing          = nothing
     parse (SkipL f₁ f₂) bs with parse f₁ bs
-    ... | nothing         = nothing
-    ... | just (x , cs)   = parse f₂ cs
+    ... | nothing          = nothing
+    ... | just (x , cs)    = parse f₂ cs
     parse (SkipR f₁ f₂) bs with parse f₁ bs
-    ... | nothing         = nothing
+    ... | nothing          = nothing
     ... | just (x , cs) with parse f₂ cs
-    ... | nothing         = nothing
-    ... | just (y , ds)   = just (x , ds)
+    ... | nothing          = nothing
+    ... | just (y , ds)    = just (x , ds)
     parse (Bounded n f) bs = parseBounded f n bs
-    parse (Many f) bs     = parseMany f (length bs) bs
-    parse (SepBy f s) bs  = parseSepBy f s (length bs) bs
+    parse (Many f) bs      = parseMany f (length bs) bs
+    parse (SepBy f s) bs   = parseSepBy f s (length bs) bs
     parse (Read f₁ f₂) bs with parse f₁ bs
-    ... | nothing         = nothing
+    ... | nothing          = nothing
     ... | just (x , cs) with parse (f₂ x) cs
-    ... | nothing         = nothing
-    ... | just (y , ds)   = just ((x , y) , ds)
+    ... | nothing          = nothing
+    ... | just (y , ds)    = just ((x , y) , ds)
 
 -- Map over BoundVectors. This is needed to make some of the parsing
 -- over strings go through.
