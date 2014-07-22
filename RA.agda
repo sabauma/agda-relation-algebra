@@ -55,7 +55,6 @@ data RA : Schema → Set where
 enquote : String → String
 enquote x = "\"" ++ x ++ "\""
 
-
 columnNames : Schema → String
 columnNames = foldr _++_ "" ∘ intersperse ","  ∘ map proj₁
 

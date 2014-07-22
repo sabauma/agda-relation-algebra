@@ -15,6 +15,10 @@ open import Function using (_∘_)
 import Data.Nat.Show as NS
 
 -- Our mini universe of types
+-- This is a representation of the types that our database bindings
+-- suppports. These types are mapped into the corresponding SQL types
+-- to perform queries and are converted into the appropriate Agda types
+-- when query results are returned.
 data U : Set where
   CHAR : U
   NAT  : U
@@ -33,7 +37,8 @@ typeName (STR x)  = "CHAR(" ++ NS.show x ++ ")"
 -- Strings are a little odd in SQL in that they are
 -- paramterized by a length, but the length serves only
 -- as an upper bound on the number of characters present.
--- This behaviour is mimicked by the BoundedVec type.
+-- This behaviour is mimicked by the BoundedVec type, but we
+-- should also add an unbounded string type for convenience as well.
 el : U → Set
 el CHAR     = Char
 el NAT      = ℕ
@@ -104,19 +109,19 @@ data Row : Schema → Set where
 -- Convert a row to a list of element wise string representations.
 -- This makes for a convenient way to display the rows.
 rowToList : {s : Schema} → Row s → List String
-rowToList {[]} EmptyRow = []
-rowToList {( n , CHAR ) ∷ s} (ConsRow x xs)          = ("'" ++ fromList [ x ] ++ "'") ∷ rowToList xs
-rowToList {( n , NAT ) ∷ s} (ConsRow x xs)           = NS.show x ∷ rowToList xs
-rowToList {( n , BOOL ) ∷ s} (ConsRow true xs)       = "1" ∷ rowToList xs
-rowToList {( n , BOOL ) ∷ s} (ConsRow false xs)      = "0" ∷ rowToList xs
-rowToList {( n , STR x ) ∷ s} (ConsRow x₁ xs)        = ("\"" ++ fromList (toList x₁) ++ "\"") ∷ rowToList xs
+rowToList {[]} EmptyRow                         = []
+rowToList {( n , CHAR ) ∷ s} (ConsRow x xs)     = ("'" ++ fromList [ x ] ++ "'") ∷ rowToList xs
+rowToList {( n , NAT ) ∷ s} (ConsRow x xs)      = NS.show x ∷ rowToList xs
+rowToList {( n , BOOL ) ∷ s} (ConsRow true xs)  = "1" ∷ rowToList xs
+rowToList {( n , BOOL ) ∷ s} (ConsRow false xs) = "0" ∷ rowToList xs
+rowToList {( n , STR x ) ∷ s} (ConsRow x₁ xs)   = ("\"" ++ fromList (toList x₁) ++ "\"") ∷ rowToList xs
 
 -- Show a row 
 showRow : {s : Schema} → Row s → String
 showRow = foldr _++_ "" ∘ intersperse "|" ∘ rowToList
 
 Table : Schema → Set
-Table s = List (Row s)
+Table = List ∘ Row
 
 -- The length of a row from the database. This is, perhaps, not that useful.
 ∥_∥ : ∀ {s} → Row s → ℕ
