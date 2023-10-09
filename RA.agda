@@ -1,14 +1,13 @@
 module RA where
 
-open import Data.Bool
-open import Data.Empty
-open import Data.List using (_∷_ ; [] ; List ; length ; foldr ; intersperse ; map)
-open import Data.Nat
-open import Data.String using (_++_ ; toList ; String ; _==_)
-open import Data.Unit
-open import Data.BoundedVec hiding (toList) renaming ([] to ⟨⟩ ; _∷_ to _::_)
-open import Function using (const ; _∘_)
-open import Data.Product hiding (map)
+open import Data.Bool.Base  using (Bool; if_then_else_)
+open import Data.List.Base  using (_∷_ ; [] ; List ; length ; foldr ; intersperse ; map)
+open import Data.Nat.Base   using (ℕ; _+_)
+open import Data.String     using (_++_ ; toList ; String ; _==_)
+open import Data.BoundedVec using (BoundedVec) renaming ([] to ⟨⟩ ; _∷_ to _::_)
+open import Function.Base   using (const ; _∘_)
+open import Data.Product    using (proj₁)
+import Data.List.Base as List
 
 open import DataTypes
 import Parse as P
@@ -48,7 +47,7 @@ data RA : Schema → Set where
   Read    : {s : Schema} → Handle s → RA s
   Union   : {s : Schema} → RA s → RA s → RA s
   Diff    : {s : Schema} → RA s → RA s → RA s
-  Product : {s s′ : Schema} → {p : So (disjoint s s′)} → RA s → RA s′ → RA (s Data.List.++ s′)
+  Product : {s s′ : Schema} → {p : So (disjoint s s′)} → RA s → RA s′ → RA (s List.++ s′)
   Project : ∀ {s} → (s′ : Schema) → {p : So (sub s′ s)} → RA s → RA s′
   Select  : {s : Schema} → Expr s BOOL → RA s → RA s
 
@@ -61,7 +60,7 @@ columnNames = foldr _++_ "" ∘ intersperse ","  ∘ map proj₁
 mutual
 
   showExpr : ∀ {s u} → Expr s u → String
-  showExpr (Lit nm)  = enquote nm 
+  showExpr (Lit nm)  = enquote nm
   showExpr (e := e₁) = showExpr e ++ " = " ++ showExpr e₁
   showExpr (e :< e₁) = showExpr e ++ " < " ++ showExpr e₁
   showExpr (s ! nm)  = nm
@@ -81,16 +80,16 @@ mutual
 -- These are the functions that interface with the database create
 -- handles and execute queries.
 
-{-# IMPORT Database #-}
+{-# FOREIGN GHC import Database #-}
 open import IO.Primitive
-import Foreign.Haskell as Hask
+-- import Foreign.Haskell as Hask
 
 postulate runQuery : String → IO String
 postulate dbDescription : String → IO String
 postulate abort : ∀ {A : Set} → IO A
-{-# COMPILED runQuery Database.runQuery #-}
-{-# COMPILED dbDescription Database.dbDescription #-}
-{-# COMPILED abort (\ _ -> Database.abort) #-}
+{-# COMPILE GHC runQuery      = Database.runQuery #-}
+{-# COMPILE GHC dbDescription = Database.dbDescription #-}
+{-# COMPILE GHC abort         = (\ _ -> Database.abort) #-}
 
 -- Performs verification of a schema given that the input string
 -- is a description of the database in the expected format.
@@ -104,7 +103,6 @@ executeQuery {s} ra = runQuery (toSQL ra) >>= λ res →
 -- This is the only exported function which can construct a handle.
 connect : String → (s : Schema) → IO (Handle s)
 connect table schema = dbDescription table >>= λ bs →
-                         if performVerification schema bs 
+                         if performVerification schema bs
                          then return (handle schema table)
                          else abort
-

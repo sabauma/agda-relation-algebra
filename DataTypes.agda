@@ -1,16 +1,16 @@
 module DataTypes where
 
-open import Data.Bool
+open import Data.Bool.Base  using (Bool; true; false)
 open import Data.BoundedVec hiding (fromList ; _∷_ ; [])
-open import Data.Char hiding (_==_)
-open import Data.Empty using (⊥)
-open import Data.List hiding (_++_)
-open import Data.Maybe
-open import Data.Nat
-open import Data.Product
-open import Data.String hiding (toList)
-open import Data.Unit using (Unit)
-open import Function using (_∘_)
+open import Data.Char.Base  using (Char)
+open import Data.Empty      using (⊥)
+open import Data.List.Base  using (List; []; _∷_; [_]; foldr)
+open import Data.Maybe.Base using (Maybe; nothing; just)
+open import Data.Nat.Base   using (ℕ; zero; suc)
+open import Data.Product    using (Σ; _,_)
+open import Data.String     using (String; _++_; _==_; fromList; intersperse)
+open import Data.Unit       using (⊤)
+open import Function        using (_∘_)
 
 import Data.Nat.Show as NS
 
@@ -24,7 +24,7 @@ data U : Set where
   NAT  : U
   BOOL : U
   STR  : ℕ → U
-  
+
 -- The name of a type as it corresponds to its given SQL name.
 typeName : U → String
 typeName CHAR     = "CHAR"
@@ -46,7 +46,7 @@ el BOOL     = Bool
 el (STR x)  = BoundedVec Char x
 
 So : Bool → Set
-So true  = Unit
+So true  = ⊤
 So false = ⊥
 
 -- An attribute corresponds to a column in the database.
@@ -116,9 +116,9 @@ rowToList {( n , BOOL ) ∷ s} (ConsRow true xs)  = "1" ∷ rowToList xs
 rowToList {( n , BOOL ) ∷ s} (ConsRow false xs) = "0" ∷ rowToList xs
 rowToList {( n , STR x ) ∷ s} (ConsRow x₁ xs)   = ("\"" ++ fromList (toList x₁) ++ "\"") ∷ rowToList xs
 
--- Show a row 
+-- Show a row
 showRow : {s : Schema} → Row s → String
-showRow = foldr _++_ "" ∘ intersperse "|" ∘ rowToList
+showRow = {-  foldr _++_ "" ∘ -}  intersperse "|" ∘ rowToList
 
 Table : Schema → Set
 Table = List ∘ Row
@@ -128,3 +128,4 @@ Table = List ∘ Row
 ∥ EmptyRow ∥    = zero
 ∥ ConsRow x y ∥ = suc ∥ y ∥
 
+-- -}
