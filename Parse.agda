@@ -1,17 +1,17 @@
 module Parse where
 
-open import Data.Bool
-open import Data.BoundedVec hiding (toList) renaming ([] to ⟨⟩ ; _∷_ to _::_)
-open import Data.Char using (Char ; _==_ ; toNat)
-open import Data.Empty
-open import Data.List using (any ; List ; foldl ; foldr ; span ; length ; _∷_ ; [])
-open import Data.Maybe
-open import Data.Nat
-open import Data.Product
-open import Data.String using (String ; toList ; _++_)
-open import Data.Sum using (_⊎_ ; inj₁ ; inj₂ ; [_,_])
-open import Data.Unit using (⊤ ; tt)
-open import Function using (_∘_ ; const)
+open import Data.Bool.Base   using (Bool; true; false; if_then_else_; not)
+open import Data.BoundedVec  using (BoundedVec; []v; _∷v_; view) renaming ([] to ⟨⟩ ; _∷_ to _::_)
+open import Data.Char        using (Char ; _==_ ; toℕ)
+open import Data.Empty       using (⊥)
+open import Data.List.Base   using (List; []; _∷_; any; foldl; foldr; length; map) renaming (boolSpan to span)
+open import Data.Maybe.Base  using (Maybe; just; nothing)
+open import Data.Nat.Base    using (ℕ; zero; suc; _+_; _*_; _∸_)
+open import Data.Product     using (Σ; _,_; proj₁; proj₂)
+open import Data.String.Base using (String ; toList ; _++_)
+open import Data.Sum.Base    using (_⊎_ ; inj₁ ; inj₂ ; [_,_])
+open import Data.Unit.Base   using (⊤ ; tt)
+open import Function.Base    using (_∘_ ; const)
 
 open import DataTypes
 
@@ -134,7 +134,7 @@ isNumber '9' = true
 isNumber _   = false
 
 addChar : ℕ → Char → ℕ
-addChar n c = 10 * n + (toNat c ∸ toNat '0')
+addChar n c = 10 * n + (toℕ c ∸ toℕ '0')
 
 makeℕ : List Char → ℕ
 makeℕ = foldl addChar 0
@@ -195,7 +195,7 @@ mutual
     ... | just (v′ , rest′) = just (v :: v′ , rest′)
 
     -- Parse a given format separated by another format.
-    parseSepBy : (f : Format) → (s : Format) → ℕ → List Char 
+    parseSepBy : (f : Format) → (s : Format) → ℕ → List Char
                → ParseResult (List ⟦ f ⟧)
     parseSepBy f s zero as    = nothing
     parseSepBy f s (suc n) [] = just ([] , [])
@@ -235,7 +235,7 @@ mutual
 
 -- Map over BoundVectors. This is needed to make some of the parsing
 -- over strings go through.
-mapBV : ∀ {A B n} → (A → B) → BoundedVec A n → BoundedVec B n
+mapBV : ∀ {A B : Set} {n} → (A → B) → BoundedVec A n → BoundedVec B n
 mapBV f x with view x
 ... | []v     = ⟨⟩
 ... | y ∷v ys = f y :: mapBV f ys
@@ -258,7 +258,7 @@ unravelSchema (( name , STR _ ) ∷ x ∷ s) (l , r)  = ConsRow (mapBV [ proj₁
 -- schema. This is expected to consume all of the input.
 parseSchema : (s : Schema) → List Char → Table s
 parseSchema s bs with parse (schemaToFormat s ⋙ char '\n') bs
-... | just (v , []) = Data.List.map (unravelSchema s) v
+... | just (v , []) = map (unravelSchema s) v
 ... | _             = []
 
 -- Perform verification of the database format.

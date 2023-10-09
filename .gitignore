@@ -1,1 +1,6 @@
 *.agdai
+/dist-newstyle/
+/MAlonzo/
+/.stack-work/
+/agda-relation-algebra.cabal
+/stack.yaml.lock

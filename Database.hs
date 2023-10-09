@@ -3,6 +3,7 @@ module Database (dbDescription, runQuery, abort) where
 
 import           Control.Monad    (liftM2)
 import           Data.List        (intercalate)
+import           Data.Text        (Text)
 import qualified Data.Text        as T
 import           Database.SQLite3
 
@@ -16,14 +17,14 @@ escape = T.replace "\n" "\\n"
 -- *  Numeric values are as expected.
 -- *  Textual data is quoted.
 -- *  Null values are given the representation 'NULL'.
-mkDataStr :: SQLData -> String
-mkDataStr (SQLInteger i) = show i
-mkDataStr (SQLText t)    = "\"" ++ T.unpack (escape t) ++ "\""
+mkDataStr :: SQLData -> Text
+mkDataStr (SQLInteger i) = T.pack $ show i
+mkDataStr (SQLText t)    = "\"" <> escape t <> "\""
 mkDataStr SQLNull        = "NULL"
 mkDataStr x              = error $ "Can only handle text and integer data: " ++ show x
 
 -- Pull values from the statement until
-getAllResults :: Statement -> IO [[String]]
+getAllResults :: Statement -> IO [[Text]]
 getAllResults stmt = do
   res <- step stmt
   case res of
@@ -31,21 +32,21 @@ getAllResults stmt = do
        Row  -> liftM2 (:) (map mkDataStr `fmap` columns stmt) (getAllResults stmt)
 
 -- Execute a query and produce a single string which aggregates the results.
--- It might be easier to send a list of Strings back to Agda, but modifying
+-- It might be easier to send a list of Texts back to Agda, but modifying
 -- the parser to handle multiple results is not difficult at this point.
-runQuery :: String -> IO String
-runQuery str = do
+runQuery :: Text -> IO Text
+runQuery q = do
   conn <- open "test.db"
-  stmt <- prepare conn (T.pack str)
+  stmt <- prepare conn q
   cols <- getAllResults stmt
   finalize stmt >> close conn
-  return $ unlines $ map (intercalate "|") cols
+  return $ T.unlines $ map (T.intercalate "|") cols
 
 -- Run a specific query that gets the description of the table.
 -- This description is also a table which will need to be parsed, but it
 -- has a known format which can be determined from a schema.
-dbDescription :: String -> IO String
-dbDescription table = runQuery $ "PRAGMA table_info(" ++ table ++ ")"
+dbDescription :: Text -> IO Text
+dbDescription table = runQuery $ "PRAGMA table_info(" <> table <> ")"
 
 -- A function for producing an error in the Agda code. This would be used
 -- when the database description does not match what is expected from the
