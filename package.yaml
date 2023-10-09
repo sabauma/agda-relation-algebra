@@ -1,0 +1,14 @@
+name:                agda-relation-algebra
+version:             0.0.20231009
+synopsis:            Database interface for Agda
+author:              Spenser Bauman
+maintainer:          sabauma@gmail.com
+
+dependencies:
+  - base          >= 4.12 && < 5
+  - direct-sqlite >= 2.3
+  - text          >= 0.11
+
+executable:
+  source-dirs: .
+  main:        MAlonzo.Code.Qexample
